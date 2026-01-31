@@ -6,7 +6,7 @@ import { RequestHandler } from 'express'
 import prisma from '@/config/prisma'
 
 
-export const verifyAccessToken: RequestHandler = async (req, res, next) => {
+const authMiddleware: RequestHandler = async (req, res, next) => {
     const authHeader = req.headers["authorization"]
     const accessToken = authHeader && authHeader.split(' ')[1]
     if (!accessToken) return res.fail(401, "TOKEN_NOT_FOUND", "Acesss token could not be found")
@@ -37,3 +37,6 @@ export const verifyAccessToken: RequestHandler = async (req, res, next) => {
     req.user = { id, email, username }
     next()
 }
+
+
+export default authMiddleware
