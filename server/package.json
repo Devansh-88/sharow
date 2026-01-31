@@ -7,6 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node dist/server.js",
     "dev": "npm i && nodemon",
+    "ai": "tsx src/lib/ai.ts",
     "logs": "docker compose -f ../compose.dev.yaml logs -f server",
     "rs": "docker compose -f ../compose.dev.yaml restart server",
     "build": "tsc && tsc-alias"

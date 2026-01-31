@@ -19,6 +19,7 @@ const EnvSchema = z.object({
     GITHUB_CLIENT_ID: z.string(),
     GITHUB_CLIENT_SECRET: z.string(),
     GITHUB_REDIRECT_URI: z.string(),
+    GEMINI_API_KEY: z.string(),
 })
 
 const parsedData = EnvSchema.safeParse(process.env)
