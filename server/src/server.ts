@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser'
 import responseHandler from './middlewares/responseHandler'
 import errorHandler from './middlewares/errorHandler'
 
+import authRoutes from './routes/auth.routes'
 
 const app = express()
 
@@ -11,7 +12,7 @@ app.use(express.json())
 app.use(cookieParser())
 app.use(responseHandler)
 
-
+app.use('/api/auth', authRoutes)
 
 
 

@@ -16,8 +16,22 @@ datasource db {
 }
 
 model User {
-  id String @id @default(uuid())
-  email String @unique
-  username String @unique
-  password String?
+  id           String   @id @default(uuid())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String?
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @default(now()) @updatedAt @db.Timestamptz(3)
 }
+
+model OtpSession {
+  id           String   @id @default(uuid())
+  email        String
+  username     String
+  passwordHash String?
+  otpUUID      String   @unique
+  otpHash      String
+  attempts     Int      @default(0)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+}
+
