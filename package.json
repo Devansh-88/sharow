@@ -1,0 +1,22 @@
+{
+  "name": "sharow",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "server":"docker compose -f compose.dev.yaml up --build -d && docker compose -f compose.dev.yaml exec nginx nginx -s reload"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Devansh-88/sharow.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Devansh-88/sharow/issues"
+  },
+  "homepage": "https://github.com/Devansh-88/sharow#readme"
+}
