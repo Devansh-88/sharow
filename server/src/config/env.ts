@@ -29,5 +29,6 @@ if (!parsedData.success) {
 }
 
 const env = parsedData.data
+console.log(env.POSTGRES_URL)
 
 export default env

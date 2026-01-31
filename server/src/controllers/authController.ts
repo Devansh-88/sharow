@@ -7,12 +7,35 @@ import { REFRESH_COOKIE_OPTIONS } from '@/lib/cookies'
 import * as jose from 'jose'
 import { RequestHandler } from 'express'
 import prisma from '@/config/prisma'
-
+import { z } from 'zod'
 
 export const signupController: RequestHandler = async (req, res) => {
-    const { username, password, fullName } = req.body
-    const email = req.body.email.toLowerCase()
+    const Schema = z.object({
+        email: z.email({ error: "Invalid email" }).toLowerCase().trim(),
+        password: z.string()
+            .min(8, { error: "Password must be at least 8 characters long" })
+            .max(20, { error: "Password cannot exceed 20 characters" })
+            .regex(/[A-Z]/, { error: "Password must contain at least one uppercase letter" })
+            .regex(/[a-z]/, { error: "Password must contain at least one lowercase letter" })
+            .regex(/[0-9]/, { error: "Password must contain at least one number" })
+            .regex(/[^A-Za-z0-9\s]/, { error: "Password must contain at least one special character" }).trim(),
+        username: z
+            .string({
+                message: "Username is required"
+            })
+            .trim() // Automatically removes leading/trailing spaces
+            .min(3, { message: "Username too short" })
+            .max(25, { message: "Username too long" })
+            .regex(/^[a-zA-Z0-9._-]+$/, {
+                message: "Only letters, numbers, ., -, and _ allowed",
+            })
+    })
+    const parsedData = Schema.safeParse(req.body)
+    console.log(parsedData)
+    if (!parsedData.success) return res.fail(400, "BAD_REQUEST", parsedData.error.message)
 
+    const { email, password, username } = parsedData.data
+    const a = prisma.user.findFirst({})
 
     //Check if email already exists
     if (await prisma.user.findUnique({ where: { email } })) return res.fail(409, "EMAIL_TAKEN", "Email is already registered")
