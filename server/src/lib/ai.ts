@@ -1,32 +1,36 @@
 import env from "@/config/env";
-import { GoogleGenAI , createUserContent , createPartFromUri } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
-
-// The client gets the API key from the environment variable `GEMINI_API_KEY`.
-const ai = new GoogleGenAI({
-  apiKey: env.GEMINI_API_KEY,
-});
 
 async function main() {
-  const myfile = await ai.files.upload({
-    file: ".././temp/image.png",
-    config: { mimeType: "image/png" },
+  const ai = new GoogleGenAI({
+    apiKey: env.GEMINI_API_KEY,
   });
-  if(!myfile)
-  {
-    console.error("Failed to upload file");
-    return;
-  }
 
-  const response = await ai.models.generateContent({
+  const imageUrl = "https://www.mamp.one/wp-content/uploads/2024/09/image-resources2.jpg";
+
+  const response = await fetch(imageUrl);
+  const imageArrayBuffer = await response.arrayBuffer();
+  const base64ImageData = Buffer.from(imageArrayBuffer).toString('base64');
+  
+  // Detect MIME type from Content-Type header
+  const mimeType = response.headers.get('content-type')?.split(';')[0] || 'image/png';
+
+  const result = await ai.models.generateContentStream({
     model: "gemini-3-flash-preview",
-    contents: createUserContent  ([
-      createPartFromUri(myfile.uri, myfile.mimeType),
-      "Caption this image.",
-    ]),
+    contents: [
+    {
+      inlineData: {
+        data: base64ImageData,
+        mimeType: mimeType,
+      },
+    },
+    { text: "Caption this image." }
+  ],
   });
-  console.log(response.text);
+  for await (const chunk of result) {
+    console.log(chunk.text);
+  }
 }
-
 
 main();
