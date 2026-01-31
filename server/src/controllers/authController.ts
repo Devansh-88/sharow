@@ -32,7 +32,7 @@ export const signupController: RequestHandler = async (req, res) => {
     })
     const parsedData = Schema.safeParse(req.body)
     console.log(parsedData)
-    if (!parsedData.success) return res.fail(400, "BAD_REQUEST", parsedData.error.message)
+    if (!parsedData.success) return res.fail(400, "BAD_REQUEST", parsedData.error.issues[0].message)
 
     const { email, password, username } = parsedData.data
     const a = prisma.user.findFirst({})
