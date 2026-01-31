@@ -6,10 +6,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node dist/server.js",
-    "dev": "npm i && nodemon",
+    "dev": "npm i && npx prisma generate && nodemon",
     "logs": "docker compose -f ../compose.dev.yaml logs -f server",
     "rs": "docker compose -f ../compose.dev.yaml restart server",
-    "build": "tsc && tsc-alias"
+    "build": "tsc && tsc-alias",
+    "studio":"npx prisma studio --url postgresql://postgres:postgres@localhost:5432/sharow"
   },
   "keywords": [],
   "author": "",

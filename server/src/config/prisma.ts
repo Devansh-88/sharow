@@ -2,7 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import env from "./env";
 import { PrismaClient } from "@/generated/prisma/client";
 
-const connectionString = env.POSTGRES_URI
+const connectionString = env.POSTGRES_URL
 
 const adapter = new PrismaPg({ connectionString })
 const prisma = new PrismaClient({ adapter })
