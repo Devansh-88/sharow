@@ -13,7 +13,7 @@ const ApplianceSchema = z.object({
 });
 
 const ChatMessageSchema = z.object({
-    conversationId: z.string().uuid("Invalid conversation ID"),
+    conversationId: z.uuid("Invalid conversation ID"),
     message: z.string().min(1, "Message cannot be empty").max(1000, "Message too long")
 });
 
@@ -23,7 +23,7 @@ export const analyzeBill: RequestHandler = async (req, res) => {
 
     const userId = req.user?.id;
     if (!userId) return res.fail(401, "UNAUTHORIZED", "User not authenticated");
-
+    console.log(file)
     let appliances: Array<{ name: string; avgUsageHours: number; wattage?: number }> = [];
     if (req.body.appliances) {
         try {
@@ -36,6 +36,8 @@ export const analyzeBill: RequestHandler = async (req, res) => {
         } catch {
             return res.fail(400, "INVALID_JSON", "Appliances data must be valid JSON");
         }
+    } else {
+        return res.fail(400, "APPLIANCES_REQUIRED", "Please provide appliance data for bill analysis");
     }
 
     try {
@@ -47,6 +49,7 @@ export const analyzeBill: RequestHandler = async (req, res) => {
         });
 
         const imageUrl = uploadResult.secure_url;
+        const cloudinaryPublicId = uploadResult.public_id;
 
         try {
             await fs.unlink(file.path);
@@ -60,6 +63,11 @@ export const analyzeBill: RequestHandler = async (req, res) => {
         });
 
         if (agentResult?.error) {
+            try {
+                await cloudinary.uploader.destroy(cloudinaryPublicId);
+            } catch (deleteError) {
+                console.error("Failed to delete Cloudinary image:", deleteError);
+            }
             return res.fail(400, "BILL_ANALYSIS_FAILED", agentResult.error.message);
         }
 

@@ -8,6 +8,7 @@ import prisma from '@/config/prisma'
 
 const authMiddleware: RequestHandler = async (req, res, next) => {
     const authHeader = req.headers["authorization"]
+    console.log("Auth Header:", authHeader)
     const accessToken = authHeader && authHeader.split(' ')[1]
     if (!accessToken) return res.fail(401, "TOKEN_NOT_FOUND", "Acesss token could not be found")
 

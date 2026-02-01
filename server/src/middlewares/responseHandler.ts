@@ -5,7 +5,7 @@ const responseHandler: RequestHandler = (req, res, next) => {
         return res.status(status).json({ success: false, code, message })
     }
     res.success = (status = 200, data = {}, message = "Successful request") => {
-        return res.status(status).json({ success: true, data, message })
+        return res.status(status).json({ success: true, ...data, message })
     }
     next()
 }

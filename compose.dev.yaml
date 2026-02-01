@@ -15,35 +15,35 @@ services:
       - 5432
     restart: unless-stopped
 
-  server:
-    build:
-      context: ./server
-      dockerfile: Dockerfile.dev
-    image: sharow_server:dev
-    container_name: sharow_dev_server
-    volumes:
-      - ./server:/app
-      - /app/node_modules/
-    expose:
-      - 8080
-    networks:
-      - sharow_dev_net
+  # server:
+  #   build:
+  #     context: ./server
+  #     dockerfile: Dockerfile.dev
+  #   image: sharow_server:dev
+  #   container_name: sharow_dev_server
+  #   volumes:
+  #     - ./server:/app
+  #     - /app/node_modules/
+  #   expose:
+  #     - 8080
+  #   networks:
+  #     - sharow_dev_net
 
-    restart: unless-stopped
+  #   restart: unless-stopped
 
-  nginx:
-    image: nginx:1.29.3
-    container_name: sharow_dev_nginx
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-    networks:
-      - sharow_dev_net
-    ports:
-      - "80:80"
-    restart: unless-stopped
-    depends_on:
-      - server
-      - db
+  # nginx:
+  #   image: nginx:1.29.3
+  #   container_name: sharow_dev_nginx
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/conf.d/default.conf
+  #   networks:
+  #     - sharow_dev_net
+  #   ports:
+  #     - "80:80"
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - server
+  #     - db
 
 volumes:
   postgres_data:
