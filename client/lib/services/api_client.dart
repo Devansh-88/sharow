@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'dart:io';
 
 class ApiClient {
@@ -43,7 +45,19 @@ class ApiClient {
 
   static void setupInterceptors() {
     _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) => handler.next(options),
+      onRequest: (options, handler) async {
+        // Attach Bearer token if available
+        final prefs = await SharedPreferences.getInstance();
+        final userData = prefs.getString('user_data');
+        if (userData != null) {
+          final userMap = jsonDecode(userData);
+          final token = userMap['accessToken'];
+          if (token != null && token is String && token.isNotEmpty) {
+            options.headers['authorization'] = 'Bearer $token';
+          }
+        }
+        handler.next(options);
+      },
       onResponse: (response, handler) => handler.next(response),
       onError: (DioException e, handler) => handler.next(e),
     ));

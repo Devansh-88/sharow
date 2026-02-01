@@ -1,97 +1,95 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'dart:convert'; // Required for jsonDecode
-import 'package:http/http.dart' as http; // Make sure to run 'flutter pub add http'
+import 'package:shadowapp/screens/applianceselection_screen.dart';
 
 class DisplayPictureScreen extends StatelessWidget {
   final String imagePath;
 
   const DisplayPictureScreen({super.key, required this.imagePath});
 
-  // --- ADD THE FUNCTION HERE ---
-  Future<void> uploadBill(BuildContext context, String filePath) async {
-    // 1. Show a loading dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(color: Colors.deepPurple),
-      ),
-    );
-
-    try {
-      // Replace with your Lead's actual IP. Example: 'http://192.168.1.5:5000/upload'
-      var url = Uri.parse('http://YOUR_BACKEND_IP:5000/upload'); 
-      
-      var request = http.MultipartRequest('POST', url);
-      request.files.add(await http.MultipartFile.fromPath('bill_image', filePath));
-
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
-
-      // Close the loading dialog
-      if (context.mounted) Navigator.pop(context);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        print("✅ Success: ${data}");
-        
-        // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Bill Processed Successfully!")),
-        );
-        
-        // Go back to Home/Dashboard
-        Navigator.pop(context); 
-      } else {
-        throw Exception("Server returned ${response.statusCode}");
-      }
-    } catch (e) {
-      if (context.mounted) Navigator.pop(context); // Close loader on error
-      print("❌ Upload Error: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Upload Failed: $e")),
-      );
-    }
-  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Confirm Bill Scan')),
+      backgroundColor: const Color(0xFF0D0221), // Midnight Black theme
+      appBar: AppBar(
+        title: const Text('Confirm Bill Scan', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       body: Column(
         children: [
-          Expanded(child: Image.file(File(imagePath))), // Show the captured image
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context), // Go back to re-take
-                  child: const Text("Retake"),
+          // 1. Image Preview Area
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFFBD93F9).withOpacity(0.3)),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.file(
+                  File(imagePath),
+                  fit: BoxFit.contain,
                 ),
-                // UPDATE THIS BUTTON HERE:
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple),
-                  onPressed: () {
-                    // 1. Show the "Thinking..." spinner
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (context) => const Center(
-                          child: CircularProgressIndicator(color: Colors.white),
+              ),
+            ),
+          ),
+
+          // 2. Info Text
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 30),
+            child: Text(
+              "Does the image look clear? Make sure the bill amount and dates are visible.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white54, fontSize: 14),
+            ),
+          ),
+
+          // 3. Action Buttons
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+            child: Row(
+              children: [
+                // RETAKE BUTTON
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      side: const BorderSide(color: Color(0xFFBD93F9)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    ),
+                    child: const Text("RETAKE", style: TextStyle(color: Color(0xFFBD93F9))),
+                  ),
+                ),
+                
+                const SizedBox(width: 15),
+
+                // PROCEED BUTTON (Triggers Navigation)
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // 🚀 Direct Navigation: No API call here
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ApplianceSelectionScreen(imagePath: imagePath),
                         ),
                       );
-
-                      // 2. Run the upload function
-                      // Note: Make sure uploadBill(context, imagePath) matches your function name
-                      uploadBill(context, imagePath).then((_) {
-                        // The dialog is usually closed inside the uploadBill function 
-                        // but we keep this as a safety net.
-                      });
                     },
-                    child: const Text("PROCEED", style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFBD93F9),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    ),
+                    child: const Text(
+                      "PROCEED",
+                      style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                    ),
                   ),
+                ),
               ],
             ),
           ),

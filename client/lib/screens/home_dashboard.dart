@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:shadowapp/providers/user_provider.dart';
 import 'package:shadowapp/screens/scanner_screen.dart';
 import 'package:shadowapp/widgets/spline_viewer.dart';
+import 'package:spline_flutter/spline_view.dart';
 import '../providers/energy_provider.dart';
 
 class HomeDashboard extends StatefulWidget {
@@ -144,7 +145,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(25),
-        child: const SplineViewerScreen(), // Calling your separate widget
+        child: const SplineRoomVisualizer(), // Calling your separate widget
       ),
     );
   }
