@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:shadowapp/screens/analytics_screen.dart';
 import '../services/api_client.dart';
 
 class ApplianceSelectionScreen extends StatefulWidget {
@@ -70,7 +71,7 @@ class _ApplianceSelectionScreenState extends State<ApplianceSelectionScreen> {
             const SnackBar(content: Text("Setup Complete!"), backgroundColor: Colors.green),
           );
           // Return to Dashboard
-          Navigator.of(context).popUntil((route) => route.isFirst);
+          Navigator.of(context).popUntil((route) => '/analytics_screen' == route.settings.name);
         }
       } else {
         throw Exception(response.data['message'] ?? "Failed to process bill");
@@ -159,17 +160,40 @@ class _ApplianceSelectionScreenState extends State<ApplianceSelectionScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: ElevatedButton(
-              onPressed: _submitData,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFBD93F9),
-                minimumSize: const Size(double.infinity, 55),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-              ),
-              child: const Text("ANALYZE & FINISH", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
-            ),
+  padding: const EdgeInsets.all(24.0),
+  child: ElevatedButton(
+    onPressed: () async {
+      // 1. Trigger the API/Console logic
+      // It shows the spinner and sends the data
+      await _submitData(); 
+
+      // 2. Navigate forward to Analytics Screen
+      // We check if the widget is still "mounted" to avoid errors after async calls
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const AnalyticsScreen(),
+            settings: const RouteSettings(name: '/analytics_screen'),
           ),
+        );
+      }
+    },
+    style: ElevatedButton.styleFrom(
+      backgroundColor: const Color(0xFFBD93F9),
+      minimumSize: const Size(double.infinity, 55),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+    ),
+    child: const Text(
+      "ANALYZE & FINISH", 
+      style: TextStyle(
+        color: Colors.black, 
+        fontWeight: FontWeight.bold, 
+        fontSize: 16
+      ),
+    ),
+  ),
+),
         ],
       ),
     );
