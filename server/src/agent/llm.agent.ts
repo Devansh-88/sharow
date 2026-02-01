@@ -1,4 +1,6 @@
 import https from 'https'
+import env from '../config/env';
+import { GoogleGenAI } from '@google/genai';
 import http from 'http'
 // Gemini agent scaffold
 // - Provides a pluggable agent loop for LLM calls (Gemini)
@@ -8,7 +10,7 @@ import http from 'http'
 // TODO: wire a real Gemini SDK client in `initClient()` and provide real `callGemini()`
 
 type Tools = Record<string, any>;
-type Guard = (context: any) => Promise<void> | void;
+type Guard = ((context: any) => Promise<void> | void) | { execute: Function };
 
 export interface GeminiAgentOptions {
   apiKey?: string;
@@ -63,14 +65,10 @@ export default class GeminiAgent {
   initClient() {
     if (!this.apiKey) {
       console.warn('Gemini API key not provided. Agent will run in dry-run mode.')
-      return
+      return;
     }
-
-    // TODO: Replace this stub with real Gemini SDK initialization, for example:
-    // import {GeminiClient} from '@google/gemini' // (example package)
-    // this.client = new GeminiClient({ apiKey: this.apiKey })
-
-    this.client = { /* placeholder client */ }
+    // Use GoogleGenAI SDK
+    this.client = new GoogleGenAI({ apiKey: this.apiKey });
   }
 
   registerTools(tools: Tools) {
@@ -83,27 +81,42 @@ export default class GeminiAgent {
 
   private async runGuards(context: any) {
     for (const g of this.guards) {
-      await g(context)
+      if (typeof g === 'function') {
+        await g(context);
+      } else if (g && typeof g.execute === 'function') {
+        await g.execute(context);
+      }
     }
   }
 
+
   /**
-   * High-level method: process a bill image buffer and return structured info.
-   * Delegates OCR/vision to a registered tool named `vision` (if provided).
-   * If not provided, this will throw so you can wire your preferred OCR.
+   * High-level method: process a bill image buffer and return structured info using Gemini's built-in OCR.
+   * Sends the image directly to Gemini for OCR and extraction.
    */
-  async processBillImage(imageBuffer: Buffer) {
-    if (!this.tools || !this.tools.vision) {
-      throw new Error('No vision tool registered. Please register a `vision` tool for OCR.');
+  async processBillImage(imageBuffer: Buffer, question?: string, appliances?: Array<{ name: string; avgUsageHours: number; wattage?: number }>) {
+    // Compose a prompt for Gemini to extract bill info from the image
+    const promptParts = [
+      this.instructions || 'Extract all relevant electricity bill details from this image. Return all fields as structured JSON.',
+      question ? `USER_QUESTION:\n${question}` : '',
+      appliances && appliances.length > 0 ? `\n\nUSER'S APPLIANCES (for cost calculation):\n${appliances.map(a => `- ${a.name}: ${a.avgUsageHours} hours/day${a.wattage ? `, ${a.wattage}W` : ''}`).join('\n')}\n\nPlease calculate the estimated cost per appliance based on the bill rate and provide tips on which appliances are consuming the most.` : ''
+    ];
+    const prompt = promptParts.filter(Boolean).join('\n\n');
+
+    // Send image and prompt to Gemini
+    const response = await this.callGemini(prompt, { image: imageBuffer });
+    let entities = {};
+    if (response && typeof response.text === 'string') {
+      // Debug: print raw Gemini response
+      console.log('--- RAW GEMINI RESPONSE ---');
+      console.log(response.text);
+      try {
+        entities = JSON.parse(response.text);
+      } catch {
+        entities = { raw: response.text };
+      }
     }
-
-    // vision tool is expected to return plain text from the image, e.g. { text: string }
-    const visionResult = await this.tools.vision.run({ image: imageBuffer })
-    const text: string = visionResult?.text || ''
-
-    const entities = this.extractEntitiesFromText(text)
-
-    return { text, entities }
+    return { entities };
   }
 
   /**
@@ -134,13 +147,35 @@ export default class GeminiAgent {
       // Dry-run / fallback: return a canned response for development
       return {
         text: `DRY-RUN: Gemini client not initialized. Prompt received: ${prompt.slice(0, 200)}`,
-      }
+      };
     }
 
-    // TODO: Use this.client to call Gemini and return model response
-    // e.g. return await this.client.generate({ prompt, ...opts })
+    // If image is provided, use Gemini vision API
+    if (opts.image) {
+      const base64ImageData = opts.image.toString('base64');
+      const mimeType = opts.mimeType || 'image/png';
+      const result = await this.client.models.generateContentStream({
+        model: 'gemini-3-flash-preview',
+        contents: [
+          {
+            inlineData: {
+              data: base64ImageData,
+              mimeType: mimeType,
+            },
+          },
+          { text: prompt }
+        ],
+      });
+      let text = '';
+      for await (const chunk of result) {
+        if (chunk.text) text += chunk.text;
+      }
+      return { text };
+    }
 
-    return { text: 'TODO: real Gemini response (client not wired)' }
+    // Otherwise, just text prompt
+    // TODO: Add text-only Gemini call if needed
+    return { text: '' };
   }
 
   /**
@@ -156,55 +191,88 @@ export default class GeminiAgent {
   /**
    * OpenAI-style run method: main entry point for agentic loop.
    */
-  async run(params: { imageUrl: string; question?: string; sessionId?: string }) {
-    const { imageUrl, question, sessionId } = params
-    const context: any = { sessionId: sessionId || null }
+  async run(params: { imageUrl: string; question?: string; sessionId?: string; appliances?: Array<{ name: string; avgUsageHours: number; wattage?: number }> }) {
+    const { imageUrl, question, sessionId, appliances } = params;
+    const context: any = { sessionId: sessionId || null };
 
-    await this.runGuards(context)
+    await this.runGuards(context);
     for (const guard of this.inputGuardrails) {
-      await guard(params)
-    }
-
-    if (!imageUrl) {
-      throw new Error('imageUrl is required')
-    }
-    const imageBuffer = await GeminiAgent.fetchImageBuffer(imageUrl)
-    const parsed = await this.processBillImage(imageBuffer)
-    context.bill = parsed
-
-    const promptParts = []
-    if (this.instructions) {
-      promptParts.push(this.instructions)
-    } else {
-      promptParts.push('You are an assistant that extracts and answers questions about electricity bills.')
-    }
-    if (parsed.text) promptParts.push('OCR_TEXT:\n' + parsed.text)
-    if (parsed.entities) promptParts.push('EXTRACTED_ENTITIES:\n' + JSON.stringify(parsed.entities, null, 2))
-    if (question) promptParts.push('USER_QUESTION:\n' + question)
-
-    const prompt = promptParts.join('\n\n')
-
-    let response = await this.callGemini(prompt, { maxTokens: 800, model: this.model })
-
-    for (const guard of this.outputGuardrails) {
-      await guard(response)
-    }
-
-    // Output type validation (if schema provided)
-    if (this.outputType && typeof this.outputType.safeParse === 'function') {
-      const validation = this.outputType.safeParse(response)
-      if (!validation.success) {
-        throw new Error('Output does not match schema: ' + JSON.stringify(validation.error))
+      if (typeof guard === 'function') {
+        await guard(params);
+      } else if (guard && typeof guard.execute === 'function') {
+        await guard.execute(params);
       }
+    }
+
+    try {
+      if (!imageUrl) {
+        return {
+          error: {
+            message: 'No image URL provided.',
+            details: 'Please provide a valid image URL.'
+          }
+        };
+      }
+      const imageBuffer = await GeminiAgent.fetchImageBuffer(imageUrl);
+      // Use Gemini's built-in OCR/image understanding
+      const parsed = await this.processBillImage(imageBuffer, question, appliances);
+      context.bill = parsed;
+
+      // The rest of the prompt/response logic is now handled by Gemini in processBillImage
+      let response = { text: JSON.stringify(parsed.entities) };
+
+      for (const guard of this.outputGuardrails) {
+        if (typeof guard === 'function') {
+          await guard(response);
+        } else if (guard && typeof guard.execute === 'function') {
+          await guard.execute({ output: response, context: params });
+        }
+      }
+
+      // Output type validation (if schema provided)
+      if (this.outputType && typeof this.outputType.safeParse === 'function') {
+        const validation = this.outputType.safeParse(parsed.entities);
+        if (!validation.success) {
+          let details = 'Unknown error.';
+          if (validation.error && Array.isArray(validation.error.errors)) {
+            details = validation.error.errors.map((e: { message: string; path?: any[] }) => `• ${e.message}${e.path ? ` (field: ${e.path.join('.')})` : ''}`).join('\n');
+          }
+          return {
+            error: {
+              message: 'Sorry, I could not find a valid electricity bill in the image you provided. Please upload a clear photo of your bill.',
+              details
+            }
+          };
+        }
+        return {
+          input: { question, parsed },
+          output: validation.data,
+        };
+      }
+
       return {
         input: { question, parsed },
-        output: validation.data,
+        output: parsed.entities,
+      };
+    } catch (err: any) {
+      // Format Gemini API errors and other errors
+      let message = 'An unexpected error occurred.';
+      let details = '';
+      if (err && err.status === 429) {
+        message = 'You have exceeded your Gemini API quota.';
+        details = 'Please wait for your quota to reset or upgrade your Gemini API plan.';
+      } else if (err && err.error && err.error.message) {
+        message = 'Gemini API Error';
+        details = err.error.message;
+      } else if (err && err.message) {
+        message = err.message;
       }
-    }
-
-    return {
-      input: { question, parsed },
-      output: response,
+      return {
+        error: {
+          message,
+          details
+        }
+      };
     }
   }
 

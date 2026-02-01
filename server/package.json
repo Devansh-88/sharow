@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node dist/server.js",
-    "ai": "tsx src/lib/ai.ts",
+    "ai": "tsx src/agent/agent.test.ts",
     "dev": "npm i && npx prisma generate && nodemon",
     "logs": "docker compose -f ../compose.dev.yaml logs -f server",
     "rs": "docker compose -f ../compose.dev.yaml restart server",
