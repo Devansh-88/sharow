@@ -1,23 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:shadowapp/models/bill_model.dart';
 
-class EnergyProvider extends ChangeNotifier {
-  BillModel? currentBill;
+class EnergyProvider with ChangeNotifier {
+  // These names MUST match what the HomeDashboard is calling
+  double totalBillAmount = 0.0;
+  Map<String, double> applianceBreakdown = {
+    "Air Conditioner": 0.0,
+    "Refrigerator": 0.0,
+    "Shadow Waste": 0.0,
+  };
 
-  void setMockBill() {
-    currentBill = BillModel(
-      id: "101",
-      totalAmount: 5000.0,
-      unitsConsumed: 450.0,
-      billingDate: DateTime.now(),
-      applianceBreakdown: {
-        "AC": 2500.0,
-        "Fridge": 800.0,
-        "Lights": 500.0,
-      },
-      shadowWaste: 1200.0,
-    );
+  bool isLoading = false;
 
-    notifyListeners(); 
+  // This function will fix the red lines when you press the button
+  void loadMockData() {
+  if (isLoading) return; // 🛑 Agar pehle se load ho raha hai, toh ruk jao
+
+  isLoading = true;
+  // notifyListeners(); // Sirf tabhi call karein agar UI ko "Spinner" dikhana ho
+
+  totalBillAmount = 4500.0;
+  applianceBreakdown = {
+    "Air Conditioner": 2200.0,
+    "Refrigerator": 800.0,
+    "Shadow Waste": 1500.0,
+  };
+
+  isLoading = false;
+  notifyListeners(); // Data update hone ke baad notify karein
   }
 }
