@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { outputGuard, OutputGuardOutputSchema } from '../base.agent';
 
-// --- Types ---
 type RunContext = { context?: any; conversationId?: string };
 export interface OutputGuardrail {
   name: string;
@@ -49,7 +48,6 @@ const sharowOutputGuardrail: OutputGuardrail = {
   name: "Sharow Output Guardrail",
   runInParallel: false,
   async execute({ output, context }) {
-    // Accepts either a string or an object with a text property
     let outputStr = '';
     if (typeof output === 'string') {
       outputStr = output;

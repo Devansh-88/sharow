@@ -1,10 +1,9 @@
 import agent from './base.agent';
 
 async function testAgent() {
-  const imageUrl = 'https://imgv2-1-f.scribdassets.com/img/document/325334324/original/4360bfeecd/1?v=1'; // Replace with a real image URL
+  const imageUrl = 'https://imgv2-1-f.scribdassets.com/img/document/325334324/original/4360bfeecd/1?v=1';
   const question = 'What is my total amount and shadow waste?';
   
-  // Optional: Pass appliance data for cost calculation
   const appliances = [
     { name: 'Air Conditioner', avgUsageHours: 8, wattage: 1500 },
     { name: 'Refrigerator', avgUsageHours: 24, wattage: 150 },
@@ -15,15 +14,13 @@ async function testAgent() {
   try {
     const result = await agent.run({ imageUrl, question, appliances });
     if (result?.error) {
-      console.error('Agent error:', result.error.message);
+      console.error('Agent Error:', result.error.message);
       if (result.error.details) {
         console.error('Details:', result.error.details);
       }
     } else if (result?.output) {
-      console.log('--- Bill Extraction Result ---');
-      for (const [key, value] of Object.entries(result.output)) {
-        console.log(`${key}:`, value);
-      }
+      console.log('Bill Analysis Result:\n');
+      console.log(JSON.stringify(result.output, null, 2));
     } else {
       console.log('Agent output:', result);
     }

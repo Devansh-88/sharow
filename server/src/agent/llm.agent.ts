@@ -2,12 +2,6 @@ import https from 'https'
 import env from '../config/env';
 import { GoogleGenAI } from '@google/genai';
 import http from 'http'
-// Gemini agent scaffold
-// - Provides a pluggable agent loop for LLM calls (Gemini)
-// - Accepts tool and guard injections (vision/OCR, validators, etc.)
-// - Contains a helper to process an electricity-bill image and extract basic entities
-//
-// TODO: wire a real Gemini SDK client in `initClient()` and provide real `callGemini()`
 
 type Tools = Record<string, any>;
 type Guard = ((context: any) => Promise<void> | void) | { execute: Function };
@@ -58,16 +52,11 @@ export default class GeminiAgent {
     return agent
   }
 
-  /**
-   * Initialize the Gemini SDK client.
-   * Replace the placeholder with the actual Gemini SDK initialization.
-   */
   initClient() {
     if (!this.apiKey) {
       console.warn('Gemini API key not provided. Agent will run in dry-run mode.')
       return;
     }
-    // Use GoogleGenAI SDK
     this.client = new GoogleGenAI({ apiKey: this.apiKey });
   }
 
@@ -90,12 +79,7 @@ export default class GeminiAgent {
   }
 
 
-  /**
-   * High-level method: process a bill image buffer and return structured info using Gemini's built-in OCR.
-   * Sends the image directly to Gemini for OCR and extraction.
-   */
   async processBillImage(imageBuffer: Buffer, question?: string, appliances?: Array<{ name: string; avgUsageHours: number; wattage?: number }>) {
-    // Compose a prompt for Gemini to extract bill info from the image
     const promptParts = [
       this.instructions || 'Extract all relevant electricity bill details from this image. Return all fields as structured JSON.',
       question ? `USER_QUESTION:\n${question}` : '',
@@ -103,26 +87,28 @@ export default class GeminiAgent {
     ];
     const prompt = promptParts.filter(Boolean).join('\n\n');
 
-    // Send image and prompt to Gemini
     const response = await this.callGemini(prompt, { image: imageBuffer });
     let entities = {};
     if (response && typeof response.text === 'string') {
-      // Debug: print raw Gemini response
-      console.log('--- RAW GEMINI RESPONSE ---');
-      console.log(response.text);
-      try {
-        entities = JSON.parse(response.text);
-      } catch {
-        entities = { raw: response.text };
+      const jsonMatch = response.text.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonMatch && jsonMatch[1]) {
+        try {
+          entities = JSON.parse(jsonMatch[1].trim());
+        } catch (e) {
+          console.error('Failed to parse JSON block:', e);
+          entities = { raw: response.text };
+        }
+      } else {
+        try {
+          entities = JSON.parse(response.text);
+        } catch {
+          entities = { raw: response.text };
+        }
       }
     }
     return { entities };
   }
 
-  /**
-   * Very small, heuristic entity extraction from OCR text. Replace with a better
-   * parser or structured-extraction tool later.
-   */
   extractEntitiesFromText(text: string) {
     const lines = (text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
     const joined = lines.join(' | ')
@@ -139,18 +125,13 @@ export default class GeminiAgent {
     }
   }
 
-  /**
-   * Call Gemini LLM with a prompt. Replace implementation with the real SDK call.
-   */
   async callGemini(prompt: string, opts: Record<string, any> = {}) {
     if (!this.client) {
-      // Dry-run / fallback: return a canned response for development
       return {
         text: `DRY-RUN: Gemini client not initialized. Prompt received: ${prompt.slice(0, 200)}`,
       };
     }
 
-    // If image is provided, use Gemini vision API
     if (opts.image) {
       const base64ImageData = opts.image.toString('base64');
       const mimeType = opts.mimeType || 'image/png';
@@ -173,24 +154,9 @@ export default class GeminiAgent {
       return { text };
     }
 
-    // Otherwise, just text prompt
-    // TODO: Add text-only Gemini call if needed
     return { text: '' };
   }
 
-  /**
-   * Main agent loop: given an image and optional user query, parse the bill and
-   * ask Gemini to answer follow-up questions. Guards and tools are applied.
-   */
-  /**
-   * Accepts either an image URL or a Buffer. If imageUrl is provided, fetches the image and processes it.
-   */
-  /**
-   * Accepts only an imageUrl. Fetches the image and processes it.
-   */
-  /**
-   * OpenAI-style run method: main entry point for agentic loop.
-   */
   async run(params: { imageUrl: string; question?: string; sessionId?: string; appliances?: Array<{ name: string; avgUsageHours: number; wattage?: number }> }) {
     const { imageUrl, question, sessionId, appliances } = params;
     const context: any = { sessionId: sessionId || null };
@@ -214,11 +180,9 @@ export default class GeminiAgent {
         };
       }
       const imageBuffer = await GeminiAgent.fetchImageBuffer(imageUrl);
-      // Use Gemini's built-in OCR/image understanding
       const parsed = await this.processBillImage(imageBuffer, question, appliances);
       context.bill = parsed;
 
-      // The rest of the prompt/response logic is now handled by Gemini in processBillImage
       let response = { text: JSON.stringify(parsed.entities) };
 
       for (const guard of this.outputGuardrails) {
@@ -229,7 +193,6 @@ export default class GeminiAgent {
         }
       }
 
-      // Output type validation (if schema provided)
       if (this.outputType && typeof this.outputType.safeParse === 'function') {
         const validation = this.outputType.safeParse(parsed.entities);
         if (!validation.success) {
@@ -255,7 +218,6 @@ export default class GeminiAgent {
         output: parsed.entities,
       };
     } catch (err: any) {
-      // Format Gemini API errors and other errors
       let message = 'An unexpected error occurred.';
       let details = '';
       if (err && err.status === 429) {
@@ -276,9 +238,6 @@ export default class GeminiAgent {
     }
   }
 
-  /**
-   * Fetches an image from a URL and returns it as a Buffer.
-   */
   static fetchImageBuffer(url: string): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const client = url.startsWith('https') ? https : http

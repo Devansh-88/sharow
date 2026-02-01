@@ -2,7 +2,6 @@ import { z } from "zod";
 import { inputGuard, InputGuardOutputSchema } from '../base.agent';
 import { InputGuardrail } from './guardrail.types';
 
-// Define allowed topics for the guardrail
 const ALLOWED_TOPICS = [
   "bills",
   "savings",
@@ -32,11 +31,6 @@ const ALLOWED_TOPICS = [
   "household",
 ];
 
-/**
- * Validates if the input is related to allowed topics (bills, savings, energy, etc.)
- * @param input - User input string
- * @returns Object with isValid boolean and error message if invalid
- */
 function validateInputGuardrails(input: string | undefined | null): { isAllowed: boolean; reason: string; message?: string } {
   if (!input || typeof input !== 'string') {
     return {
@@ -47,15 +41,12 @@ function validateInputGuardrails(input: string | undefined | null): { isAllowed:
   }
   const lowerInput = input.toLowerCase().trim();
 
-  // Check if input contains any of the allowed topics
   const containsAllowedTopic = ALLOWED_TOPICS.some((topic) =>
     lowerInput.includes(topic)
   );
 
-  // Allow common conversational/clarifying queries
   const isConversational = /^(hi|hello|hey|yes|no|ok|thanks|thank you|hmm|uhh|what|how|why|can you|please|help)\b/i.test(lowerInput);
 
-  // Reject if clearly unrelated (math not related to bills, general knowledge, etc.)
   const isCompletelyUnrelated = /\b(recipe|weather|sports|movie|music|game|politics|news|joke|story)\b/i.test(lowerInput) && !containsAllowedTopic;
 
   let isAllowed = containsAllowedTopic || isConversational;
@@ -75,7 +66,6 @@ const sharowInputGuardrail: InputGuardrail = {
   name: "Sharow Input Guardrail",
   runInParallel: false,
   async execute({ input, context }) {
-    // Use the shared inputGuard agent for structure, but real logic is local
     const validation = validateInputGuardrails(input);
     const output = InputGuardOutputSchema.parse({
       isAllowed: validation.isAllowed,
