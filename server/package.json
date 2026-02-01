@@ -6,18 +6,19 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node dist/server.js",
-    "ai": "tsx src/lib/ai.ts",
+    "ai": "tsx src/agent/agent.test.ts",
     "dev": "npm i && npx prisma generate && nodemon",
     "logs": "docker compose -f ../compose.dev.yaml logs -f server",
     "rs": "docker compose -f ../compose.dev.yaml restart server",
     "build": "tsc && tsc-alias",
-    "studio":"npx prisma studio --url postgresql://postgres:postgres@localhost:5432/sharow"
+    "studio": "npx prisma studio --url postgresql://postgres:postgres@localhost:5432/sharow"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@google/genai": "^1.39.0",
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
     "@types/multer": "^2.0.0",

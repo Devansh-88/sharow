@@ -10,32 +10,40 @@ import prisma from '@/config/prisma'
 import { z } from 'zod'
 
 export const signupController: RequestHandler = async (req, res) => {
+
+    // const Schema = z.object({
+    //     email: z.email({ error: "Invalid email" }).toLowerCase().trim(),
+    //     password: z.string()
+    //         .min(8, { error: "Password must be at least 8 characters long" })
+    //         .max(20, { error: "Password cannot exceed 20 characters" })
+    //         .regex(/[A-Z]/, { error: "Password must contain at least one uppercase letter" })
+    //         .regex(/[a-z]/, { error: "Password must contain at least one lowercase letter" })
+    //         .regex(/[0-9]/, { error: "Password must contain at least one number" })
+    //         .regex(/[^A-Za-z0-9\s]/, { error: "Password must contain at least one special character" }).trim(),
+    //     username: z
+    //         .string({
+    //             message: "Username is required"
+    //         })
+    //         .trim() // Automatically removes leading/trailing spaces
+    //         .min(3, { message: "Username too short" })
+    //         .max(25, { message: "Username too long" })
+    //         .regex(/^[a-zA-Z0-9._-]+$/, {
+    //             message: "Only letters, numbers, ., -, and _ allowed",
+    //         })
+    // })
     const Schema = z.object({
-        email: z.email({ error: "Invalid email" }).toLowerCase().trim(),
-        password: z.string()
-            .min(8, { error: "Password must be at least 8 characters long" })
-            .max(20, { error: "Password cannot exceed 20 characters" })
-            .regex(/[A-Z]/, { error: "Password must contain at least one uppercase letter" })
-            .regex(/[a-z]/, { error: "Password must contain at least one lowercase letter" })
-            .regex(/[0-9]/, { error: "Password must contain at least one number" })
-            .regex(/[^A-Za-z0-9\s]/, { error: "Password must contain at least one special character" }).trim(),
-        username: z
-            .string({
-                message: "Username is required"
-            })
-            .trim() // Automatically removes leading/trailing spaces
-            .min(3, { message: "Username too short" })
-            .max(25, { message: "Username too long" })
-            .regex(/^[a-zA-Z0-9._-]+$/, {
-                message: "Only letters, numbers, ., -, and _ allowed",
-            })
+        email: z.email(),
+        password: z.string(),
+        username: z.string()
     })
+
+
     const parsedData = Schema.safeParse(req.body)
-    console.log(parsedData)
+
     if (!parsedData.success) return res.fail(400, "BAD_REQUEST", parsedData.error.issues[0].message)
 
     const { email, password, username } = parsedData.data
-    const a = prisma.user.findFirst({})
+
 
     //Check if email already exists
     if (await prisma.user.findUnique({ where: { email } })) return res.fail(409, "EMAIL_TAKEN", "Email is already registered")
@@ -80,8 +88,8 @@ export const signupController: RequestHandler = async (req, res) => {
     //Sending a cookie containing otpUUID
     res.cookie('otpUUID', otpUUID, {
         sameSite: "lax",
-        secure: true,
-        httpOnly: true,
+        // secure: true,
+        // httpOnly: true,
         maxAge: 5 * 60 * 1000,
     })
 
@@ -92,11 +100,12 @@ export const signupController: RequestHandler = async (req, res) => {
 export const otpVerificationController: RequestHandler = async (req, res) => {
     const enteredOtp = req.body?.otp
     if (!enteredOtp) return res.fail(400, "INVALID_OTP_FORMAT", "Entered otp had an invalid format")
-
     const otpUUID = req.cookies?.otpUUID
+
     if (!otpUUID) return res.fail(410, "SESSION_EXPIRED", "Otp session expired, please re-signup")
 
     const token = await prisma.otpSession.findUnique({ where: { otpUUID } })
+
     if (!token) return res.fail(410, "SESSION_EXPIRED", "Otp session expired, please re-signup")
 
     //Extracting OtpSession data
@@ -140,8 +149,8 @@ export const otpVerificationController: RequestHandler = async (req, res) => {
     await prisma.otpSession.delete({ where: { otpUUID } })
     res.clearCookie('otpUUID', {
         sameSite: "lax",
-        secure: true,
-        httpOnly: true,
+        // secure: true,
+        // httpOnly: true,
         maxAge: 5 * 60 * 1000,
     })
 

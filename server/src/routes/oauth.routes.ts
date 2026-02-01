@@ -1,4 +1,4 @@
-import { githubOAuthCallback, googleOAuthCallback, redirectToGithubOAuth, redirectToGoogleOAuth } from '@/controllers/oauthController'
+import { githubOAuthCallback, googleOAuthCallback, redirectToGithubOAuth, redirectToGoogleOAuth } from '@/controllers/oauthcontroller'
 import asyncHandler from '@/middlewares/asyncHandler'
 import express from 'express'
 
