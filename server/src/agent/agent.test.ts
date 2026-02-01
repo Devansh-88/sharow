@@ -12,18 +12,49 @@ async function testAgent() {
   ];
 
   try {
-    const result = await agent.run({ imageUrl, question, appliances });
-    if (result?.error) {
-      console.error('Agent Error:', result.error.message);
-      if (result.error.details) {
-        console.error('Details:', result.error.details);
+    console.log('Step 1: Analyzing bill image...\n');
+    const initialResult = await agent.run({ imageUrl, question, appliances });
+    
+    if (initialResult?.error) {
+      console.error('Agent Error:', initialResult.error.message);
+      if (initialResult.error.details) {
+        console.error('Details:', initialResult.error.details);
       }
-    } else if (result?.output) {
-      console.log('Bill Analysis Result:\n');
-      console.log(JSON.stringify(result.output, null, 2));
-    } else {
-      console.log('Agent output:', result);
+      return;
     }
+    
+    if (initialResult?.output) {
+      console.log('Bill Analysis Result:\n');
+      console.log(JSON.stringify(initialResult.output, null, 2));
+      console.log('\n---\n');
+    }
+
+    if (initialResult?.history) {
+      console.log('Step 2: Testing follow-up conversation...\n');
+      
+      const followUpQuestions = [
+        'Which appliance is costing me the most?',
+        'How can I reduce my electricity bill?',
+        'What is my cost per unit of electricity?'
+      ];
+
+      let conversationHistory = initialResult.history;
+
+      for (const followUpQuestion of followUpQuestions) {
+        console.log(`User: ${followUpQuestion}`);
+        
+        const chatResult = await agent.run({
+          message: followUpQuestion,
+          history: conversationHistory
+        });
+
+        if (chatResult?.output) {
+          console.log(`Assistant: ${chatResult.output}\n`);
+          conversationHistory = chatResult.history || conversationHistory;
+        }
+      }
+    }
+    
   } catch (err) {
     console.error('Agent error:', err);
   }

@@ -18,6 +18,11 @@ export interface GeminiAgentOptions {
   outputType?: any;
 }
 
+export interface ConversationHistory {
+  role: 'user' | 'model';
+  parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }>;
+}
+
 export default class GeminiAgent {
   private apiKey?: string
   private client: any | null = null
@@ -157,8 +162,34 @@ export default class GeminiAgent {
     return { text: '' };
   }
 
-  async run(params: { imageUrl: string; question?: string; sessionId?: string; appliances?: Array<{ name: string; avgUsageHours: number; wattage?: number }> }) {
-    const { imageUrl, question, sessionId, appliances } = params;
+  async chat(message: string, history: ConversationHistory[] = []) {
+    if (!this.client) {
+      return {
+        text: 'DRY-RUN: Gemini client not initialized.',
+        history: [],
+      };
+    }
+
+    const model = this.client.models.get({ model: 'gemini-3-flash-preview' });
+    const chat = model.startChat({ history });
+    const result = await chat.sendMessageStream(message);
+    
+    let text = '';
+    for await (const chunk of result) {
+      if (chunk.text) text += chunk.text;
+    }
+
+    const updatedHistory: ConversationHistory[] = [
+      ...history,
+      { role: 'user', parts: [{ text: message }] },
+      { role: 'model', parts: [{ text }] },
+    ];
+
+    return { text, history: updatedHistory };
+  }
+
+  async run(params: { imageUrl?: string; message?: string; question?: string; sessionId?: string; appliances?: Array<{ name: string; avgUsageHours: number; wattage?: number }>; history?: ConversationHistory[] }) {
+    const { imageUrl, message, question, sessionId, appliances, history = [] } = params;
     const context: any = { sessionId: sessionId || null };
 
     await this.runGuards(context);
@@ -171,6 +202,25 @@ export default class GeminiAgent {
     }
 
     try {
+      if (message && history.length > 0) {
+        const chatResult = await this.chat(message, history);
+        
+        let response = { text: chatResult.text };
+        for (const guard of this.outputGuardrails) {
+          if (typeof guard === 'function') {
+            await guard(response);
+          } else if (guard && typeof guard.execute === 'function') {
+            await guard.execute({ output: response, context: params });
+          }
+        }
+
+        return {
+          input: { message },
+          output: chatResult.text,
+          history: chatResult.history,
+        };
+      }
+
       if (!imageUrl) {
         return {
           error: {
@@ -179,6 +229,7 @@ export default class GeminiAgent {
           }
         };
       }
+      
       const imageBuffer = await GeminiAgent.fetchImageBuffer(imageUrl);
       const parsed = await this.processBillImage(imageBuffer, question, appliances);
       context.bill = parsed;
@@ -207,15 +258,32 @@ export default class GeminiAgent {
             }
           };
         }
+
+        const billContext = `You just analyzed an electricity bill with the following details:
+- Total Amount: ₹${validation.data.totalAmount}
+- Units Consumed: ${validation.data.unitsConsumed} kWh
+- Billing Date: ${validation.data.billingDate}
+- Appliance Breakdown: ${JSON.stringify(validation.data.applianceBreakdown)}
+- Shadow Waste: ₹${validation.data.shadowWaste}
+
+You can answer follow-up questions about this bill, provide energy-saving tips, or help analyze consumption patterns.`;
+
+        const initialHistory: ConversationHistory[] = [
+          { role: 'user', parts: [{ text: `Here is my electricity bill image. Please analyze it.` }] },
+          { role: 'model', parts: [{ text: billContext }] },
+        ];
+
         return {
           input: { question, parsed },
           output: validation.data,
+          history: initialHistory,
         };
       }
 
       return {
         input: { question, parsed },
         output: parsed.entities,
+        history: [],
       };
     } catch (err: any) {
       let message = 'An unexpected error occurred.';

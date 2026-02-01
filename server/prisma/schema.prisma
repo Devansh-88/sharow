@@ -16,13 +16,15 @@ datasource db {
 }
 
 model User {
-  id             String   @id @default(uuid())
-  email          String   @unique
-  username       String   @unique
-  passwordHash   String?
-  avatarPublicId String?
-  createdAt      DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+  id              String         @id @default(uuid())
+  email           String         @unique
+  username        String         @unique
+  passwordHash    String?
+  avatarPublicURL String?
+  createdAt       DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime       @default(now()) @updatedAt @db.Timestamptz(3)
+  bills           Bill[]
+  conversations   Conversation[]
 }
 
 model OtpSession {
@@ -34,4 +36,41 @@ model OtpSession {
   otpHash      String
   attempts     Int      @default(0)
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
+}
+
+model Bill {
+  id                 String         @id @default(uuid())
+  userId             String
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  billNumber         String
+  totalAmount        Float
+  unitsConsumed      Float
+  billingDate        String
+  applianceBreakdown Json
+  shadowWaste        Float
+  analysis           String?
+  tips               Json?
+  unusualConsumption String?
+  potentialSavings   Float?
+  imageUrl           String?
+  createdAt          DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime       @default(now()) @updatedAt @db.Timestamptz(3)
+  conversations      Conversation[]
+
+  @@index([userId])
+  @@index([billingDate])
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  billId    String?
+  bill      Bill?    @relation(fields: [billId], references: [id], onDelete: Cascade)
+  history   Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@index([userId])
+  @@index([billId])
 }

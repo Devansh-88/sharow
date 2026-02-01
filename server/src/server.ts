@@ -6,7 +6,7 @@ import errorHandler from './middlewares/errorHandler'
 
 import authRoutes from './routes/auth.routes'
 import oauthRoutes from './routes/oauth.routes'
-import fileRoutes from './routes/file.routes'
+import billRoutes from './routes/bill.routes'
 
 
 const app = express()
@@ -17,7 +17,7 @@ app.use(responseHandler)
 
 app.use('/api/auth', authRoutes)
 app.use('/api/oauth', oauthRoutes)
-app.use('/api/files', fileRoutes)
+app.use('/api/bills', billRoutes)
 
 
 
