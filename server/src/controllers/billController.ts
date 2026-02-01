@@ -57,9 +57,9 @@ export const analyzeBill: RequestHandler = async (req, res) => {
             console.error("Error unlinking file:", file.path);
         }
 
-        const agentResult = await agent.run({ 
-            imageUrl, 
-            appliances 
+        const agentResult = await agent.run({
+            imageUrl,
+            appliances
         });
 
         if (agentResult?.error) {
@@ -98,7 +98,7 @@ export const analyzeBill: RequestHandler = async (req, res) => {
                 history: JSON.parse(JSON.stringify(conversationHistory)) as Prisma.InputJsonValue
             }
         });
-
+        console.log("Bill analysis successful:", bill);
         return res.success(201, {
             bill,
             conversationId: conversation.id
